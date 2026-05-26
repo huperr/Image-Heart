@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to Heart Emoji Converter</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #ff4757;
+        }
+        .controls {
+            background-color: #2f3542;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        input[type="file"], input[type="range"] {
+            margin: 10px;
+        }
+        label {
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        #output {
+            background-color: #000;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre;
+            font-family: monospace;
+            line-height: 1.2;
+            font-size: 10px;
+            overflow-x: auto;
+            text-align: left;
+            display: inline-block;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Image to Emoji Converter</h1>
+    <p>this is so dumb idea bro</p>
+
+    <div class="controls">
+        <input type="file" id="upload" accept="image/*"><br>
+        
+        <label for="resolution">resolution: <span id="res-val">50</span></label><br>
+        <input type="range" id="resolution" min="20" max="120" value="50">
+    </div>
+
+    <div class="container">
+        <div id="output">upload image goes here</div>
+    </div>
+
+    <script>
+        const upload = document.getElementById('upload');
+        const resolution = document.getElementById('resolution');
+        const resVal = document.getElementById('res-val');
+        const output = document.getElementById('output');
+
+        // Define our emoji palette with their approximate RGB values
+        const emojiPalette = [
+            { emoji: '❤️', r: 255, g: 0,   b: 0 },   // Red
+            { emoji: '🧡', r: 255, g: 165, b: 0 },   // Orange
+            { emoji: '💛', r: 255, g: 255, b: 0 },   // Yellow
+            { emoji: '💚', r: 0,   g: 255, b: 0 },   // Green
+            { emoji: '💙', r: 0,   g: 0,   b: 255 }, // Blue
+            { emoji: '💜', r: 128, g: 0,   b: 128 }, // Purple
+            { emoji: '🤎', r: 139, g: 69,  b: 19 },  // Brown
+            { emoji: '🖤', r: 30,  g: 30,  b: 30 },  // Black (Dark)
+            { emoji: '🤍', r: 240, g: 240, b: 240 }  // White (Light)
+        ];
+
+        let currentImage = null;
+
+        upload.addEventListener('change', handleImage);
+        resolution.addEventListener('input', () => {
+            resVal.textContent = resolution.value;
+            if (currentImage) convertToEmojis(currentImage);
+        });
+
+        function handleImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img;
+                    convertToEmojis(img);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function convertToEmojis(img) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Calculate scale based on chosen resolution width
+            const targetWidth = parseInt(resolution.value);
+            // Squish height slightly (0.8) because emojis are typically taller than they are wide
+            const targetHeight = Math.round((img.height / img.width) * targetWidth * 0.8);
+
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+
+            // Draw image down to the tiny resolution canvas
+            ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+            // Get pixel data
+            const imgData = ctx.getImageData(0, 0, targetWidth, targetHeight).data;
+            let emojiString = '';
+
+            for (let y = 0; y < targetHeight; y++) {
+                for (let x = 0; x < targetWidth; x++) {
+                    const offset = (y * targetWidth + x) * 4;
+                    const r = imgData[offset];
+                    const g = imgData[offset + 1];
+                    const b = imgData[offset + 2];
+                    const a = imgData[offset + 3];
+
+                    // If pixel is mostly transparent, use black or white depending on theme preference
+                    if (a < 128) {
+                        emojiString += '🖤'; 
+                        continue;
+                    }
+
+                    emojiString += findClosestEmoji(r, g, b);
+                }
+                emojiString += '\n'; // New line at the end of every row
+            }
+
+            output.textContent = emojiString;
+        }
+
+        // Euclidean distance algorithm to find the closest matching color in our palette
+        function findClosestEmoji(r, g, b) {
+            let closestEmoji = '🖤';
+            let minDistance = Infinity;
+
+            for (const item of emojiPalette) {
+                const distance = Math.sqrt(
+                    Math.pow(r - item.r, 2) +
+                    Math.pow(g - item.g, 2) +
+                    Math.pow(b - item.b, 2)
+                );
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestEmoji = item.emoji;
+                }
+            }
+
+            return closestEmoji;
+        }
+    </script>
+</body>
+</html>
